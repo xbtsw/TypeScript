@@ -29,6 +29,8 @@ namespace ts {
         preserveWatchOutput?: boolean;
         listEmittedFiles?: boolean;
         listFiles?: boolean;
+        transformer?: string;
+        additionalTransformerFiles?: string[];
     }
 
     enum BuildResultFlags {
@@ -258,7 +260,7 @@ namespace ts {
         const relativePath = getRelativePathFromDirectory(rootDirOfOptions(configFile.options, configFile.options.configFilePath!), inputFileName, /*ignoreCase*/ true);
         const outputPath = resolvePath(configFile.options.outDir || getDirectoryPath(configFile.options.configFilePath!), relativePath);
         const newExtension = fileExtensionIs(inputFileName, Extension.Json) ? Extension.Json :
-                             fileExtensionIs(inputFileName, Extension.Tsx) && configFile.options.jsx === JsxEmit.Preserve ? Extension.Jsx : Extension.Js;
+            fileExtensionIs(inputFileName, Extension.Tsx) && configFile.options.jsx === JsxEmit.Preserve ? Extension.Jsx : Extension.Js;
         return changeExtension(outputPath, newExtension);
     }
 
@@ -398,6 +400,10 @@ namespace ts {
 
         // State of the solution
         let options = defaultOptions;
+        let customTransformers: CustomTransformers | undefined = undefined;
+        if (options.transformer) {
+            customTransformers = require(options.transformer)
+        }
         let baseCompilerOptions = getCompilerOptionsOfBuildOptions(options);
         type ConfigFileCacheEntry = ParsedCommandLine | Diagnostic;
         const configFileCache = createFileMap<ConfigFileCacheEntry>(toPath);
@@ -628,8 +634,15 @@ namespace ts {
         function getUpToDateStatusWorker(project: ParsedCommandLine): UpToDateStatus {
             let newestInputFileName: string = undefined!;
             let newestInputFileTime = minimumDate;
+            let filesNames = project.fileNames;
+            if (options.transformer) {
+                filesNames = [...filesNames, options.transformer]
+            }
+            if (options.additionalTransformerFiles) {
+                filesNames = [...filesNames, ...options.additionalTransformerFiles]
+            }
             // Get timestamps of input files
-            for (const inputFile of project.fileNames) {
+            for (const inputFile of filesNames) {
                 if (!host.fileExists(inputFile)) {
                     return {
                         type: UpToDateStatusType.Unbuildable,
@@ -1060,7 +1073,7 @@ namespace ts {
                     newestDeclarationFileContentChangedTime = newer(priorChangeTime, newestDeclarationFileContentChangedTime);
                     unchangedOutputs.setValue(fileName, priorChangeTime);
                 }
-            });
+            }, customTransformers);
 
             if (emitDiagnostics) {
                 return buildErrors(emitDiagnostics, BuildResultFlags.EmitErrors, "Emit");
@@ -1302,7 +1315,7 @@ namespace ts {
                     relName(configFileName),
                     status.reason);
             case UpToDateStatusType.ContainerOnly:
-                // Don't report status on "solution" projects
+            // Don't report status on "solution" projects
             case UpToDateStatusType.ComputingUpstream:
                 // Should never leak from getUptoDateStatusWorker
                 break;

@@ -826,6 +826,22 @@ namespace ts {
             category: Diagnostics.Command_line_Options,
             description: Diagnostics.Delete_the_outputs_of_all_projects,
             type: "boolean"
+        },
+        {
+            name: "transformer",
+            category: Diagnostics.Command_line_Options,
+            description: Diagnostics.Delete_the_outputs_of_all_projects,
+            type: "string"
+        },
+        {
+            name: "additionalTransformerFiles",
+            category: Diagnostics.Command_line_Options,
+            description: Diagnostics.Delete_the_outputs_of_all_projects,
+            type: "list",
+            element: {
+                name: "additionalTransformerFiles",
+                type: "string"
+            }
         }
     ];
 
@@ -2008,13 +2024,13 @@ namespace ts {
      * It does *not* resolve the included files.
      */
     function parseConfig(
-            json: any,
-            sourceFile: TsConfigSourceFile | undefined,
-            host: ParseConfigHost,
-            basePath: string,
-            configFileName: string | undefined,
-            resolutionStack: string[],
-            errors: Push<Diagnostic>,
+        json: any,
+        sourceFile: TsConfigSourceFile | undefined,
+        host: ParseConfigHost,
+        basePath: string,
+        configFileName: string | undefined,
+        resolutionStack: string[],
+        errors: Push<Diagnostic>,
     ): ParsedTsconfig {
         basePath = normalizeSlashes(basePath);
         const resolvedPath = getNormalizedAbsolutePath(configFileName || "", basePath);
